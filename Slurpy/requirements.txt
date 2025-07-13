@@ -1,0 +1,6 @@
+qdrant-client>=1.9.0
+langchain-qdrant
+langchain-openai
+langchain-community
+sentence-transformers
+huggingface-hub           # pulled in by sentence-transformers
