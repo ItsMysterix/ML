@@ -1,4 +1,4 @@
-# rag_core.py  –  Slurp retrieval-augmented engine
+
 import os
 from typing import List
 
@@ -9,7 +9,7 @@ from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 
 # ----------  1. load vector index (1-2 s) ----------
-INDEX_PATH = "ed_index_full"          #  <-- un-zip folder lives next to this file
+INDEX_PATH = "ed_index_full"         
 COLLECTION = "ed_chunks"
 
 _embedder = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -25,9 +25,9 @@ _retriever = _qdrant.as_retriever(search_kwargs={"k": 4})
 
 # ----------  2. LLM  ----------
 _llm = ChatOpenAI(
-    model="gpt-3.5-turbo",            # or "gpt-4o-mini" if you have access
+    model="gpt-3.5-turbo",           
     temperature=0.6,
-    max_tokens=256,
+    model_kwargs={"max_tokens": 256}
 )
 
 _rag_chain = RetrievalQA.from_chain_type(
@@ -65,7 +65,7 @@ def slurpy_answer(message: str) -> dict:
 
 # ----------  4. basic CLI test ----------
 if __name__ == "__main__":
-    os.environ.setdefault("OPENAI_API_KEY", "sk-…")    # set your key however you like
+    os.environ.setdefault("OPENAI_API_KEY", "sk-…")    
     while True:
         try:
             msg = input("You > ")
