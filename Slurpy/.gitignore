@@ -1,14 +1,3 @@
-.env                     
-.venv/                  
-ed_index_full/           
-*.sqlite                 
-emotion/model/           
-emotion/**/checkpoint-*/ 
-*.safetensors            
-*.bin                    
-sessions.jsonl           
-.DS_Store                
-.idea/ .vscode/          
 # ───────── Python ─────────
 __pycache__/
 *.py[cod]
