@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import Link from "next/link"
@@ -19,44 +20,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-// Floating particles component
-function FloatingParticles() {
-  const particles = Array.from({ length: 12 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    delay: Math.random() * 4,
-    duration: 8 + Math.random() * 4,
-  }))
+/* ──────────────────────────────────────
+   Client‑only import to kill hydration diff
+─────────────────────────────────────── */
+const FloatingParticles = dynamic(
+  () => import("@/components/floating-particles"),
+  { ssr: false }
+)
 
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute w-2 h-2 bg-sage-300/20 rounded-full blur-sm"
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-          }}
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 10, -5, 0],
-            opacity: [0.1, 0.3, 0.1],
-          }}
-          transition={{
-            duration: particle.duration,
-            delay: particle.delay,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-// Testimonial carousel component
+/* ──────────────────────────────────────
+   Testimonial carousel (unchanged)
+─────────────────────────────────────── */
 function TestimonialCarousel() {
   const testimonials = [
     { quote: "Slurpy helped me understand my anxiety patterns", name: "Sarah", emoji: "🍑" },
@@ -80,11 +54,11 @@ function TestimonialCarousel() {
         className="flex transition-transform duration-700 ease-in-out"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
-        {testimonials.map((testimonial, index) => (
-          <div key={index} className="w-full flex-shrink-0 text-center px-8">
-            <blockquote className="text-xl italic font-display text-sage-500 mb-4">"{testimonial.quote}"</blockquote>
+        {testimonials.map((t, i) => (
+          <div key={i} className="w-full flex-shrink-0 text-center px-8">
+            <blockquote className="text-xl italic font-display text-sage-500 mb-4">“{t.quote}”</blockquote>
             <cite className="text-sm text-sage-400">
-              — {testimonial.name} {testimonial.emoji}
+              — {t.name} {t.emoji}
             </cite>
           </div>
         ))}
@@ -94,31 +68,26 @@ function TestimonialCarousel() {
 }
 
 export default function LandingPage() {
-  const [isScrolled, setIsScrolled] = useState(false)
   const router = useRouter()
 
-  // Update the handleStartConversation function to route to the new chat drawer page
-
-  const handleStartConversation = () => {
-    router.push("/sign-in")
-  }
-
+  /* sticky mobile CTA trigger */
+  const [isScrolled, setIsScrolled] = useState(false)
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > window.innerHeight / 2)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    const onScroll = () => setIsScrolled(window.scrollY > window.innerHeight / 2)
+    window.addEventListener("scroll", onScroll)
+    return () => window.removeEventListener("scroll", onScroll)
   }, [])
+
+  const handleStartConversation = () => router.push("/sign-in")
 
   return (
     <div className="min-h-screen bg-sand-50 dark:bg-[#1d1f1d] text-sage-500 dark:text-sage-100">
-      {/* Hero Section */}
+      {/* ─────────── Hero Section ─────────── */}
       <section className="relative min-h-[70vh] container mx-auto px-4 py-16">
         <FloatingParticles />
 
         <div className="grid lg:grid-cols-2 gap-12 items-center h-full relative z-10">
-          {/* Left Column */}
+          {/* Left column */}
           <div className="flex flex-col gap-6 mx-16 my-6">
             <motion.h1
               className="font-display text-sage-500 dark:text-sage-100 font-extrabold text-left py-0.5 text-6xl my-0"
@@ -167,7 +136,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Right Column */}
+          {/* Right column */}
           <div className="flex justify-center lg:justify-end">
             <motion.div
               className="relative h-80 w-80 md:h-96 md:w-96 rounded-full bg-gradient-to-br from-sand-50/60 to-sage-100/60 backdrop-blur-md ring-1 ring-sage-100/50 flex items-center justify-center shadow-lg mx-14 my-1.5"
@@ -176,14 +145,8 @@ export default function LandingPage() {
               transition={{ duration: 1, delay: 0.3 }}
             >
               <motion.div
-                animate={{
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeInOut",
-                }}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               >
                 <MessageCircle className="w-24 h-24 text-sage-400 stroke-1" />
               </motion.div>
@@ -192,7 +155,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Benefits Grid */}
+      {/* ─────────── Benefits Grid ─────────── */}
       <section className="container mx-auto px-4 py-24">
         <div className="max-w-5xl mx-auto">
           <motion.div
@@ -218,16 +181,16 @@ export default function LandingPage() {
                 title: "Private & Secure",
                 description: "Your conversations are encrypted and private. Your mental health journey stays yours.",
               },
-            ].map((benefit, index) => (
-              <motion.div key={index} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+            ].map((b, i) => (
+              <motion.div key={i} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
                 <Card className="bg-sand-200 border-sand-50 shadow-soft rounded-3xl p-6 h-full">
                   <CardContent className="p-0">
                     <div className="mb-4">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-clay-400 to-sage-300 flex items-center justify-center mb-4">
-                        <benefit.icon className="w-6 h-6 text-white" />
+                        <b.icon className="w-6 h-6 text-white" />
                       </div>
-                      <h3 className="font-display font-semibold text-xl text-sage-500 mb-2">{benefit.title}</h3>
-                      <p className="text-sage-400 font-sans leading-relaxed">{benefit.description}</p>
+                      <h3 className="font-display font-semibold text-xl text-sage-500 mb-2">{b.title}</h3>
+                      <p className="text-sage-400 font-sans leading-relaxed">{b.description}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -237,10 +200,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonial Carousel */}
+      {/* ─────────── Testimonial Carousel ─────────── */}
       <TestimonialCarousel />
 
-      {/* How It Works */}
+      {/* ─────────── How It Works ─────────── */}
       <section id="how-it-works" className="container mx-auto px-4 py-24">
         <div className="max-w-4xl mx-auto">
           <motion.h2
@@ -273,26 +236,28 @@ export default function LandingPage() {
                 description: "Receive personalized insights and track your emotional patterns.",
                 icon: BarChart3,
               },
-            ].map((item, index) => (
+            ].map((it, i) => (
               <motion.div
-                key={index}
+                key={i}
                 className="flex items-start gap-6"
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.2 }}
+                transition={{ duration: 0.8, delay: i * 0.2 }}
                 viewport={{ once: true }}
               >
                 <div className="flex-shrink-0 w-12 h-12 rounded-full bg-sage-500 text-white flex items-center justify-center font-display font-bold text-lg">
-                  {item.step}
+                  {it.step}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-display font-semibold text-2xl text-sage-500 dark:text-sage-100 mb-2">
-                    {item.title}
+                    {it.title}
                   </h3>
-                  <p className="text-sage-400 dark:text-sage-200 font-sans leading-relaxed">{item.description}</p>
+                  <p className="text-sage-400 dark:text-sage-200 font-sans leading-relaxed">
+                    {it.description}
+                  </p>
                 </div>
                 <div className="flex-shrink-0">
-                  <item.icon className="w-8 h-8 text-sage-300" />
+                  <it.icon className="w-8 h-8 text-sage-300" />
                 </div>
               </motion.div>
             ))}
@@ -300,7 +265,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Strip */}
+      {/* ─────────── CTA Strip ─────────── */}
       <section className="py-16 bg-sage-100 dark:bg-sage-500/10">
         <div className="container mx-auto px-4 text-center">
           <motion.h2
@@ -328,13 +293,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ─────────── Footer ─────────── */}
       <footer className="bg-sand-200 dark:bg-[#2a2d2a] py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="mx-3">
               <h3 className="font-display font-bold text-2xl text-sage-500 dark:text-sage-100 mb-2">Slurpy</h3>
-              <p className="text-sage-400 dark:text-sage-200 text-sm">© 2024 Slurpy. All rights reserved.</p>
+              <p className="text-sage-400 dark:text-sage-200 text-sm">© 2024 Slurpy. All rights reserved.</p>
             </div>
             <div className="flex items-center justify-start md:justify-end gap-6 mx-5">
               <Link href="/privacy" className="text-sage-400 hover:text-sage-500 font-sans text-sm">
@@ -356,7 +321,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Mobile Sticky CTA */}
+      {/* ─────────── Mobile Sticky CTA ─────────── */}
       {isScrolled && (
         <motion.div
           className="fixed bottom-4 left-4 right-4 md:hidden z-50"
