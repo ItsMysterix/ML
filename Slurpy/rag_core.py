@@ -3,7 +3,7 @@ from collections import deque
 from typing import Deque, Tuple
 
 # ── memory engine ────────────────────────────────────────────────
-from memory import add_message, recall               # swap for real user/session id later
+from memory import add_message, recall              
 # ─────────────────────────────────────────────────────────────────
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -114,7 +114,19 @@ def is_greeting(txt: str):  return any(txt.lower().strip().startswith(g) for g i
 def is_farewell(txt: str):  return any(f in txt.lower() for f in FAREWELLS)
 
 # ------------------------------------------------------------------
-def slurpy_answer(msg: str, hist: History):
+def slurpy_answer(msg: str, hist: History, user_id: str | None = None):
+    """
+    Main entry‑point: generate Slurpy’s answer.
+
+    Parameters
+    ----------
+    msg      : the user’s message
+    hist     : short‑term conversational history (deque)
+    user_id  : Clerk user ID (fallbacks to “anonymous” for CLI / tests)
+    """
+    if user_id is None:
+        user_id = "anonymous"
+
     if is_self_harm(msg):
         hotline = "If you’re thinking about self‑harm, please call 988 (US) or your local helpline."
         hist.append((msg, hotline, "crisis"))
@@ -128,7 +140,7 @@ def slurpy_answer(msg: str, hist: History):
     context = "\n---\n".join(d.page_content for d in context_docs)
 
     # personal memory recall
-    recalled = recall(USER_ID, msg, k=3)
+    recalled = recall(user_id, msg, k=3)
     if recalled:
         mem_block = "\n".join(f"• {line}" for line in recalled)
         context = f"{mem_block}\n====\n{context}"
@@ -142,7 +154,7 @@ def slurpy_answer(msg: str, hist: History):
         fruit=fruit,
         intensity=prob,
         question=msg,
-        tone=tone_instruction,        # << only NEW field
+        tone=tone_instruction,
     )
     answer = str(llm.invoke(prompt).content)
 
@@ -150,7 +162,7 @@ def slurpy_answer(msg: str, hist: History):
     if len(hist) > 6:
         hist.popleft()
 
-    add_message(USER_ID, msg, emotion, fruit, prob)
+    add_message(user_id, msg, emotion, fruit, prob)
     return answer, emotion, fruit
 
 # ------------------------------------------------------------------

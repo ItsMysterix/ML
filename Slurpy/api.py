@@ -1,64 +1,46 @@
 """
-api.py — FastAPI gateway for Slurpy
-----------------------------------
-• POST /chat   → chats with Slurpy (JWT + optional API key)
-• GET  /health → simple liveness probe
+api.py — FastAPI gateway for Slurpy (debug edition)
+---------------------------------------------------
+• POST /chat   → chats with Slurpy (JWT‑only auth)
+• GET  /health → liveness probe
 """
 
 from __future__ import annotations
 
-import os, uuid
+import uuid
+from collections import deque
 from typing import Deque, Dict, Tuple
 
-from fastapi import FastAPI, Depends, HTTPException, Request, status
-from fastapi.security.api_key import APIKeyHeader
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from pydantic import BaseModel
-from collections import deque
 
-from clerk_sdk import ClerkClient            
-from rag_core import slurpy_answer           
+from auth_clerk import verify_clerk_token
+from rag_core import slurpy_answer
 
-# ──────────────────────────────────────────────────────────────────────────
-# Clerk setup
-# ──────────────────────────────────────────────────────────────────────────
-# CLERK_SECRET_KEY must be in env.
-clerk = ClerkClient()
-
+# ─────────────────────────────────────────────────────────────────────────────
 def get_clerk_user_id(req: Request) -> str:
-    """Extract & verify Clerk session; return user_id or 401."""
-    auth = req.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Missing Clerk session token")
-    token = auth.split(" ", 1)[1]
-    try:
-        session = clerk.sessions.verify_session(token)
-        return session.user_id
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid Clerk session")
+    """Extract and verify Clerk token from Authorization header"""
+    auth_header = req.headers.get("Authorization", "")
+    print("🔐 Authorization Header:", auth_header)
 
-# ──────────────────────────────────────────────────────────────────────────
-# Optional internal API key
-# ──────────────────────────────────────────────────────────────────────────
-API_KEY_NAME = "X-API-KEY"
-_INTERNAL_API_KEY = os.getenv("SLURPY_API_KEY")  # set in prod if desired
+    if not auth_header.startswith("Bearer "):
+        print("❌ Missing or malformed token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Clerk session token",
+        )
 
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+    token = auth_header.split(" ", 1)[1]
+    print("🔍 Verifying token...")
+    claims = verify_clerk_token(token)
+    print("✅ Token verified. User ID:", claims.get("sub"))
+    return claims["sub"]
 
-def get_internal_api_key(key: str | None = Depends(api_key_header)):
-    if _INTERNAL_API_KEY is None:          # feature disabled
-        return
-    if key == _INTERNAL_API_KEY:
-        return
-    raise HTTPException(status_code=403, detail="Invalid or missing API key")
-
-# ──────────────────────────────────────────────────────────────────────────
-# Pydantic models
-# ──────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     text: str
-    session_id: str | None = None          # allow front‑end to resume a chat
+    session_id: str | None = None
+
 
 class ChatResponse(BaseModel):
     session_id: str
@@ -66,36 +48,40 @@ class ChatResponse(BaseModel):
     emotion: str
     fruit: str
 
-# ──────────────────────────────────────────────────────────────────────────
-# FastAPI app
-# ──────────────────────────────────────────────────────────────────────────
-app = FastAPI(title="Slurpy RAG API", version="1.0")
+# ─────────────────────────────────────────────────────────────────────────────
+app = FastAPI(title="Slurpy RAG API", version="debug-mode")
 
-# per‑user, per‑session short‑term history
-History = Deque[Tuple[str, str, str]]              # (user_msg, bot_msg, emotion)
-histories: Dict[tuple[str, str], History] = {}     # key = (user_id, session_id)
+# session memory
+History = Deque[Tuple[str, str, str]]
+histories: Dict[tuple[str, str], History] = {}
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(
-    payload: ChatRequest,
-    req: Request,
-    _ = Depends(get_internal_api_key),          # optional API key
-    user_id: str = Depends(get_clerk_user_id),  # Clerk auth
-):
-    # resolve / create session
-    sid = payload.session_id or str(uuid.uuid4())
-    key = (user_id, sid)
-    hist = histories.setdefault(key, deque(maxlen=6))
+async def chat_endpoint(payload: ChatRequest, req: Request):
+    try:
+        print("\n🌐 /chat endpoint hit!")
+        print("📝 Payload received:", payload.dict())
 
-    # ask Slurpy
-    answer, emotion, fruit = slurpy_answer(payload.text, hist, user_id=user_id)
+        user_id = get_clerk_user_id(req)
+        sid = payload.session_id or str(uuid.uuid4())
+        key = (user_id, sid)
+        hist = histories.setdefault(key, deque(maxlen=6))
 
-    return ChatResponse(
-        session_id=sid,
-        message=answer,
-        emotion=emotion,
-        fruit=fruit,
-    )
+        print(f"📚 Using session: {sid} for user: {user_id}")
+        print("💬 Calling slurpy_answer...")
+
+        answer, emotion, fruit = slurpy_answer(payload.text, hist, user_id)
+
+        print("✅ Slurpy replied:", answer)
+        return ChatResponse(
+            session_id=sid,
+            message=answer,
+            emotion=emotion,
+            fruit=fruit,
+        )
+    except Exception as e:
+        print("🔥 INTERNAL ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/health")
 async def health():

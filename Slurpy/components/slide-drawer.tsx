@@ -6,6 +6,7 @@ import { Menu, X, Check, Circle, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useClerk, useUser } from "@clerk/nextjs" 
 
 interface SlideDrawerProps {
   selectedTab?: "chats" | "analysis"
@@ -15,6 +16,9 @@ interface SlideDrawerProps {
 
 export default function SlideDrawer({ selectedTab = "chats", onTabChange, onSidebarToggle }: SlideDrawerProps) {
   const [isOpen, setIsOpen] = useState(false)
+
+  const { signOut } = useClerk()
+  const { user } = useUser()
 
   const progressSteps = [
     { label: "Listening", status: "completed", icon: Check, color: "text-sage-500" },
@@ -114,17 +118,41 @@ export default function SlideDrawer({ selectedTab = "chats", onTabChange, onSide
             {/* User Section */}
             <div className="border-sand-200 p-4 flex items-center gap-3 min-h-[64px] border-t-0-[px]-2-0">
               <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-clay-400 text-white text-sm">A</AvatarFallback>
-              </Avatar>
-              <span className="text-sage-500 text-sm flex-1 font-sans">John</span>
+  {user?.imageUrl ? (
+    <img
+      src={user.imageUrl}
+      alt="Profile"
+      className="w-full h-full object-cover rounded-full"
+    />
+  ) : (
+    <AvatarFallback className="bg-clay-400 text-white text-sm">
+      {user?.firstName?.[0] ?? "U"}
+    </AvatarFallback>
+  )}
+</Avatar>
+<span className="text-sage-500 text-sm flex-1 font-sans">
+  {user?.firstName ?? "User"}
+</span>
+
               <Link href="/profile">
                 <Button variant="ghost" size="sm" className="text-sage-400 hover:text-sage-600 p-2">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </Link>
             </div>
+
+            {/* 🔴 Sign Out Button */}
+            <div className="px-4 pb-4">
+              <Button
+                onClick={() => signOut()}
+                className="w-full bg-red-400 hover:bg-red-500 text-white justify-start font-sans text-sm"
+              >
+                Sign out
+              </Button>
+            </div>
           </>
         )}
+
         {/* Hamburger Button at bottom when collapsed */}
         {!isOpen && (
           <div className="mt-auto mb-4 px-2">
@@ -149,3 +177,4 @@ export default function SlideDrawer({ selectedTab = "chats", onTabChange, onSide
     </>
   )
 }
+ 

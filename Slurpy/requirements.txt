@@ -6,3 +6,4 @@ sentence-transformers
 huggingface-hub
 fastapi
 uvicorn
+cachetools==5.3.3
